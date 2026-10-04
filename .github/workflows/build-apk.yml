@@ -1,4 +1,4 @@
-name: Build Jin Notepad APK
+name: Build Jin Notepad v0.2 APK
 
 on:
   workflow_dispatch:
@@ -35,12 +35,12 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Jin Notepad
+      - name: Extract Jin Notepad v0.2
         run: |
-          unzip -o JinNotepad-MVP-0.1.1-FIXED.zip
+          unzip -o JinNotepad-v0.2.0-PRO.zip
           chmod +x JinNotepad/gradlew
 
-      - name: Build Jin Notepad APK
+      - name: Build APK
         run: |
           cd JinNotepad
           ./gradlew clean :app:assembleDebug --stacktrace
@@ -52,6 +52,7 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: Jin-Notepad-APK
+          name: Jin-Notepad-v0.2-APK
           path: JinNotepad/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 30

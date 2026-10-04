@@ -36,16 +36,28 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Jin Notepad project
+      - name: Extract and fix Jin Notepad project
         run: |
           unzip -o JinNotepad-MVP-0.1.0.zip
           chmod +x JinNotepad/gradlew
-          ls -la JinNotepad
+
+          sed -i '/import androidx.activity.compose.rememberLauncherForActivityResult/a import androidx.activity.compose.setContent' \
+          JinNotepad/app/src/main/java/com/jin/notepad/MainActivity.kt
+
+          echo "Checking MainActivity imports..."
+          grep -n "androidx.activity.compose" \
+          JinNotepad/app/src/main/java/com/jin/notepad/MainActivity.kt
+
+          echo "Project extracted and patched successfully"
 
       - name: Build Jin Notepad APK
         run: |
           cd JinNotepad
           ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Check APK
+        run: |
+          ls -lh JinNotepad/app/build/outputs/apk/debug/
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
@@ -53,3 +65,4 @@ jobs:
           name: Jin-Notepad-APK
           path: JinNotepad/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
+          retention-days: 30

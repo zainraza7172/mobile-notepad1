@@ -20,43 +20,25 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK tools
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
           cmdline-tools-version: 15859902
           packages: ''
           accept-android-sdk-licenses: false
 
-      - name: Accept licenses and install Android SDK 37
+      - name: Install Android SDK 36
         run: |
-          sdkmanager --version
           yes | sdkmanager --licenses || true
-          sdkmanager "platform-tools" "platforms;android-37" "build-tools;37.0.0"
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract and patch Jin Notepad
+      - name: Extract Jin Notepad
         run: |
-          unzip -o JinNotepad-MVP-0.1.0.zip
+          unzip -o JinNotepad-MVP-0.1.1-FIXED.zip
           chmod +x JinNotepad/gradlew
-
-          # Fix missing Compose setContent import
-          grep -q "import androidx.activity.compose.setContent" \
-          JinNotepad/app/src/main/java/com/jin/notepad/MainActivity.kt || \
-          sed -i '/import androidx.activity.compose.rememberLauncherForActivityResult/a import androidx.activity.compose.setContent' \
-          JinNotepad/app/src/main/java/com/jin/notepad/MainActivity.kt
-
-          # Upgrade compileSdk from 36 to 37
-          sed -i 's/compileSdk = 36/compileSdk = 37/' \
-          JinNotepad/app/build.gradle.kts
-
-          echo "===== Android config ====="
-          grep -n "compileSdk" JinNotepad/app/build.gradle.kts
-
-          echo "===== setContent check ====="
-          grep -n "setContent" \
-          JinNotepad/app/src/main/java/com/jin/notepad/MainActivity.kt
 
       - name: Build Jin Notepad APK
         run: |
@@ -65,7 +47,6 @@ jobs:
 
       - name: Verify APK
         run: |
-          test -f JinNotepad/app/build/outputs/apk/debug/app-debug.apk
           ls -lh JinNotepad/app/build/outputs/apk/debug/app-debug.apk
 
       - name: Upload APK
@@ -74,4 +55,3 @@ jobs:
           name: Jin-Notepad-APK
           path: JinNotepad/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 30

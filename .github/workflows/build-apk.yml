@@ -1,13 +1,10 @@
-name: Build JinPad 1.0 APK
+name: Build Signed Notepad 1.0 Release
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
 
 jobs:
-  build:
+  release:
     runs-on: ubuntu-latest
 
     steps:
@@ -32,30 +29,53 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-      - name: Set up Gradle 9.6
+      - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "9.6.0"
 
-      - name: Extract JinPad 1.0
+      - name: Extract Notepad Final
         run: |
-          rm -rf JinPad
-          unzip -o JinPad-1.0.0.zip
-          test -f JinPad/settings.gradle.kts
+          unzip -o Notepad-FINAL-1.0.0.zip
+          chmod +x Notepad/gradlew
 
-      - name: Build APK
+      - name: Restore signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.NOTEPAD_KEYSTORE_BASE64 }}
         run: |
-          cd JinPad
-          gradle clean :app:assembleDebug --stacktrace
+          test -n "$KEYSTORE_BASE64" || (echo "Missing NOTEPAD_KEYSTORE_BASE64 secret" && exit 1)
+          echo "$KEYSTORE_BASE64" | base64 --decode > "$GITHUB_WORKSPACE/notepad-release-key.jks"
 
-      - name: Verify APK
+      - name: Build signed release APK and AAB
+        env:
+          STORE_PASSWORD: ${{ secrets.NOTEPAD_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.NOTEPAD_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.NOTEPAD_KEY_PASSWORD }}
         run: |
-          ls -lh JinPad/app/build/outputs/apk/debug/app-debug.apk
+          test -n "$STORE_PASSWORD" || (echo "Missing signing secrets" && exit 1)
+          cd Notepad
+          ./gradlew clean :app:assembleRelease :app:bundleRelease \
+            -Pandroid.injected.signing.store.file="$GITHUB_WORKSPACE/notepad-release-key.jks" \
+            -Pandroid.injected.signing.store.password="$STORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEY_PASSWORD" \
+            --stacktrace
 
-      - name: Upload APK
+      - name: Verify outputs
+        run: |
+          ls -lh Notepad/app/build/outputs/apk/release/app-release.apk
+          ls -lh Notepad/app/build/outputs/bundle/release/app-release.aab
+
+      - name: Upload signed release APK
         uses: actions/upload-artifact@v4
         with:
-          name: JinPad-1.0-APK
-          path: JinPad/app/build/outputs/apk/debug/app-debug.apk
+          name: Notepad-1.0-SIGNED-APK
+          path: Notepad/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 90
+
+      - name: Upload Play Store AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notepad-1.0-PLAY-AAB
+          path: Notepad/app/build/outputs/bundle/release/app-release.aab
+          if-no-files-found: error
+          retention-days: 90
